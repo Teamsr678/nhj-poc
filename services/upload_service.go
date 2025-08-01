@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"fmt"
 	"mime/multipart"
 	"nhj-poc/database"
@@ -43,7 +44,6 @@ func parseAndInsertExcel(file multipart.File) ([]models.Account, []models.Custom
 		return nil, nil, fmt.Errorf("no data found in Excel file")
 	}
 
-	// Build header map
 	headerMap := make(map[string]int)
 	for i, col := range rows[0] {
 		headerMap[col] = i
@@ -68,33 +68,39 @@ func parseAndInsertExcel(file multipart.File) ([]models.Account, []models.Custom
 		// Prepare the Account entry
 		accountEntry := models.Account{
 			AccountID:         mapRowToValue(row, headerMap, "accountId"),
-			CustomerID:        mapRowToValue(row, headerMap, "customerId"),
-			ProductType:       mapRowToValue(row, headerMap, "productType"),
-			OutstandingAmount: mapRowToNullableInt(row, headerMap, "outstandingAmount"),
-			OverdueAmount:     mapRowToNullableInt(row, headerMap, "overDueAmount"),
-			DaysPastDue:       mapRowToNullableInt(row, headerMap, "daysPastDue"),
-			SelfCured:         mapRowToValue(row, headerMap, "selfCured"),
-			TopUpScore:        mapRowToValue(row, headerMap, "topUpScore"),
-			LossOnSale:        mapRowToNullableInt(row, headerMap, "lossOnSale"),
-			LossOnClaim:       mapRowToValue(row, headerMap, "lossOnClaim"),
+			CustomerID:        StringPtrToNullString(mapRowToNullableValue(row, headerMap, "customerId")),
+			ProductType:       StringPtrToNullString(mapRowToNullableValue(row, headerMap, "productType")),
+			OutstandingAmount: convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "outstandingAmount")),
+			OverdueAmount:     convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "overDueAmount")),
+			DaysPastDue:       convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "daysPastDue")),
+			SelfCured:         StringPtrToNullString(mapRowToNullableValue(row, headerMap, "selfCured")),
+			TopUpScore:        StringPtrToNullString(mapRowToNullableValue(row, headerMap, "topUpScore")),
+			LossOnSale:        convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "lossOnSale")),
+			LossOnClaim:       StringPtrToNullString(mapRowToNullableValue(row, headerMap, "lossOnClaim")),
 		}
 		Accounts = append(Accounts, accountEntry)
+
+		occupationName := mapRowToNullableValue(row, headerMap, "occupation")
+		var occupationID *int
+		if occupationName != nil {
+			occupationID = occupationsMap[*occupationName]
+		}
 
 		// Prepare the Customer entry
 		customerEntry := models.Customer{
 			CustomerID:         mapRowToValue(row, headerMap, "customerId"),
-			CustomerName:       mapRowToValue(row, headerMap, "customerName"),
-			OccupationID:       occupationsMap[mapRowToValue(row, headerMap, "occupation")],
-			RegisterAddress:    mapRowToValue(row, headerMap, "registerAddress"),
-			RegisterTambol:     mapRowToValue(row, headerMap, "registerTambol"),
-			RegisterAmphur:     mapRowToValue(row, headerMap, "registerAmphur"),
-			RegisterProvince:   mapRowToValue(row, headerMap, "registerProvince"),
-			RegisterPostalCode: mapRowToNullableInt(row, headerMap, "registerPostalCode"),
-			CurrentAddress:     mapRowToValue(row, headerMap, "currentAddress"),
-			CurrentTambol:      mapRowToValue(row, headerMap, "currentTambol"),
-			CurrentAmphur:      mapRowToValue(row, headerMap, "currentAmphur"),
-			CurrentProvince:    mapRowToValue(row, headerMap, "currentProvince"),
-			CurrentPostalCode:  mapRowToNullableInt(row, headerMap, "currentPostalCode"),
+			CustomerName:       StringPtrToNullString(mapRowToNullableValue(row, headerMap, "customerName")),
+			OccupationID:       convertIntPtrToNullInt64(occupationID),
+			RegisterAddress:    StringPtrToNullString(mapRowToNullableValue(row, headerMap, "registerAddress")),
+			RegisterTambol:     StringPtrToNullString(mapRowToNullableValue(row, headerMap, "registerTambol")),
+			RegisterAmphur:     StringPtrToNullString(mapRowToNullableValue(row, headerMap, "registerAmphur")),
+			RegisterProvince:   StringPtrToNullString(mapRowToNullableValue(row, headerMap, "registerProvince")),
+			RegisterPostalCode: convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "registerPostalCode")),
+			CurrentAddress:     StringPtrToNullString(mapRowToNullableValue(row, headerMap, "currentAddress")),
+			CurrentTambol:      StringPtrToNullString(mapRowToNullableValue(row, headerMap, "currentTambol")),
+			CurrentAmphur:      StringPtrToNullString(mapRowToNullableValue(row, headerMap, "currentAmphur")),
+			CurrentProvince:    StringPtrToNullString(mapRowToNullableValue(row, headerMap, "currentProvince")),
+			CurrentPostalCode:  convertIntPtrToNullInt64(mapRowToNullableInt(row, headerMap, "currentPostalCode")),
 		}
 
 		Customers = append(Customers, customerEntry)
@@ -110,11 +116,17 @@ func parseAndInsertExcel(file multipart.File) ([]models.Account, []models.Custom
 		return nil, nil, fmt.Errorf("failed to select existing customer IDs: %w", err)
 	}
 
-	// Remove duplicates from Customers slice by CustomerID
-	var filteredCustomers []models.Customer
+	// Update or insert customers based on existence
+	var updatedCustomers []models.Customer
+	var newCustomers []models.Customer
 	for _, customer := range Customers {
-		if !contains(existingCustomerIDs, customer.CustomerID) {
-			filteredCustomers = append(filteredCustomers, customer)
+		if contains(existingCustomerIDs, customer.CustomerID) {
+			if err := database.DB.Model(&models.Customer{}).Where("customer_id = ?", customer.CustomerID).Updates(customer).Error; err != nil {
+				return nil, nil, fmt.Errorf("failed to update customer with ID %s: %w", customer.CustomerID, err)
+			}
+			updatedCustomers = append(updatedCustomers, customer)
+		} else {
+			newCustomers = append(newCustomers, customer)
 		}
 	}
 
@@ -125,29 +137,35 @@ func parseAndInsertExcel(file multipart.File) ([]models.Account, []models.Custom
 		return nil, nil, fmt.Errorf("failed to select existing account IDs: %w", err)
 	}
 
-	// Remove duplicates from Accounts slice by AccountID
-	var filteredAccounts []models.Account
+	// Update or insert accounts based on existence
+	var updatedAccounts []models.Account
+	var newAccounts []models.Account
 	for _, account := range Accounts {
-		if !contains(existingAccountIDs, account.AccountID) {
-			filteredAccounts = append(filteredAccounts, account)
+		if contains(existingAccountIDs, account.AccountID) {
+			if err := database.DB.Model(&models.Account{}).Where("account_id = ?", account.AccountID).Updates(account).Error; err != nil {
+				return nil, nil, fmt.Errorf("failed to update account with ID %s: %w", account.AccountID, err)
+			}
+			updatedAccounts = append(updatedAccounts, account)
+		} else {
+			newAccounts = append(newAccounts, account)
 		}
 	}
 
-	// Perform batch insert for filtered customer records
-	if len(filteredCustomers) > 0 {
-		if err := database.DB.CreateInBatches(filteredCustomers, 100).Error; err != nil {
-			return nil, nil, fmt.Errorf("failed to insert customer_export batch: %w", err)
+	// Perform batch insert for new customer records
+	if len(newCustomers) > 0 {
+		if err := database.DB.CreateInBatches(newCustomers, 100).Error; err != nil {
+			return nil, nil, fmt.Errorf("failed to insert new customer batch: %w", err)
 		}
 	}
 
-	// Perform batch insert for filtered account records
-	if len(filteredAccounts) > 0 {
-		if err := database.DB.CreateInBatches(filteredAccounts, 100).Error; err != nil {
-			return nil, nil, fmt.Errorf("failed to insert account_export batch: %w", err)
+	// Perform batch insert for new account records
+	if len(newAccounts) > 0 {
+		if err := database.DB.CreateInBatches(newAccounts, 100).Error; err != nil {
+			return nil, nil, fmt.Errorf("failed to insert new account batch: %w", err)
 		}
 	}
 
-	return filteredAccounts, filteredCustomers, nil
+	return newAccounts, newCustomers, nil
 }
 
 func mapRowToValue(row []string, headerMap map[string]int, field string) string {
@@ -162,6 +180,23 @@ func mapRowToValue(row []string, headerMap map[string]int, field string) string 
 	return get(field)
 }
 
+func mapRowToNullableValue(row []string, headerMap map[string]int, field string) *string {
+	get := func(col string) string {
+		i, ok := headerMap[col]
+		if !ok || i >= len(row) {
+			return ""
+		}
+		return row[i]
+	}
+
+	value := get(field)
+	if value == "" {
+		return nil
+	}
+
+	return &value
+}
+
 func mapRowToNullableInt(row []string, headerMap map[string]int, field string) *int {
 	get := func(col string) string {
 		i, ok := headerMap[col]
@@ -171,13 +206,11 @@ func mapRowToNullableInt(row []string, headerMap map[string]int, field string) *
 		return row[i]
 	}
 
-	// Fetch the value as a string and convert it
 	value := get(field)
 	if value == "" {
 		return nil
 	}
 
-	// Remove commas from the value before converting it to an integer
 	value = strings.ReplaceAll(value, ",", "")
 
 	result, err := strconv.Atoi(value)
@@ -187,17 +220,14 @@ func mapRowToNullableInt(row []string, headerMap map[string]int, field string) *
 	return &result
 }
 
-// removeDuplicateCustomers filters out customer export records with duplicate CustomerID.
 func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
-	seen := make(map[string]models.Customer) // To track unique CustomerIDs and store the latest record
+	seen := make(map[string]models.Customer)
 	result := []models.Customer{}
 
 	for _, customerEntry := range Customers {
-		// Update the map with the latest record for this CustomerID
 		seen[customerEntry.CustomerID] = customerEntry
 	}
 
-	// Now, append all unique Customer entries (which contain the last data for each CustomerID)
 	for _, customerEntry := range seen {
 		result = append(result, customerEntry)
 	}
@@ -205,7 +235,6 @@ func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
 	return result
 }
 
-// getCustomerIDs returns a list of CustomerIDs from the Customers slice
 func getCustomerIDs(Customers []models.Customer) []string {
 	var ids []string
 	for _, customer := range Customers {
@@ -214,7 +243,6 @@ func getCustomerIDs(Customers []models.Customer) []string {
 	return ids
 }
 
-// getAccountIDs returns a list of AccountIDs from the Accounts slice
 func getAccountIDs(Accounts []models.Account) []string {
 	var ids []string
 	for _, account := range Accounts {
@@ -223,7 +251,6 @@ func getAccountIDs(Accounts []models.Account) []string {
 	return ids
 }
 
-// contains checks if a string exists in the slice
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
@@ -231,4 +258,72 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func convertIntPtrToNullInt64(i *int) *sql.NullInt64 {
+	if i == nil {
+		return &sql.NullInt64{Valid: false}
+	}
+	return &sql.NullInt64{Int64: int64(*i), Valid: true}
+}
+
+func StringPtrToNullString(s *string) *sql.NullString {
+	ns := &sql.NullString{}
+	if s != nil {
+		ns.String = *s
+		ns.Valid = true
+	} else {
+		ns.Valid = false
+	}
+	return ns
+}
+
+func compareAndUpdateAccount(account models.Account) error {
+	var existingAccount models.Account
+	if err := database.DB.Where("account_id = ?", account.AccountID).First(&existingAccount).Error; err != nil {
+		return nil // Account does not exist, so we will insert it
+	}
+
+	// Compare each field and update only if necessary
+	if account.ProductType != existingAccount.ProductType ||
+		account.OutstandingAmount != existingAccount.OutstandingAmount ||
+		account.OverdueAmount != existingAccount.OverdueAmount ||
+		account.DaysPastDue != existingAccount.DaysPastDue ||
+		account.SelfCured != existingAccount.SelfCured ||
+		account.TopUpScore != existingAccount.TopUpScore ||
+		account.LossOnSale != existingAccount.LossOnSale ||
+		account.LossOnClaim != existingAccount.LossOnClaim {
+
+		if err := database.DB.Model(&existingAccount).Updates(account).Error; err != nil {
+			return fmt.Errorf("failed to update account with ID %s: %w", account.AccountID, err)
+		}
+	}
+	return nil
+}
+
+func compareAndUpdateCustomer(customer models.Customer) error {
+	var existingCustomer models.Customer
+	if err := database.DB.Where("customer_id = ?", customer.CustomerID).First(&existingCustomer).Error; err != nil {
+		return nil // Customer does not exist, so we will insert it
+	}
+
+	// Compare each field and update only if necessary
+	if customer.CustomerName != existingCustomer.CustomerName ||
+		customer.OccupationID != existingCustomer.OccupationID ||
+		customer.RegisterAddress != existingCustomer.RegisterAddress ||
+		customer.RegisterTambol != existingCustomer.RegisterTambol ||
+		customer.RegisterAmphur != existingCustomer.RegisterAmphur ||
+		customer.RegisterProvince != existingCustomer.RegisterProvince ||
+		customer.RegisterPostalCode != existingCustomer.RegisterPostalCode ||
+		customer.CurrentAddress != existingCustomer.CurrentAddress ||
+		customer.CurrentTambol != existingCustomer.CurrentTambol ||
+		customer.CurrentAmphur != existingCustomer.CurrentAmphur ||
+		customer.CurrentProvince != existingCustomer.CurrentProvince ||
+		customer.CurrentPostalCode != existingCustomer.CurrentPostalCode {
+
+		if err := database.DB.Model(&existingCustomer).Updates(customer).Error; err != nil {
+			return fmt.Errorf("failed to update customer with ID %s: %w", customer.CustomerID, err)
+		}
+	}
+	return nil
 }

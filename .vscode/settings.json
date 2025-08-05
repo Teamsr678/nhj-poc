@@ -6,6 +6,7 @@
         "godotenv",
         "gonic",
         "gorm",
+        "jinzhu",
         "joho",
         "sslmode",
         "Tambol",

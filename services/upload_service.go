@@ -6,8 +6,9 @@ import (
 	"log"
 	"mime/multipart"
 	"nhj-poc/database"
-	"nhj-poc/entity"
-	"nhj-poc/models"
+	"nhj-poc/domain/entity"
+	"nhj-poc/domain/model"
+	"nhj-poc/util"
 	"strconv"
 	"strings"
 
@@ -51,8 +52,8 @@ func parseAndInsertExcel(file multipart.File) error {
 		headerMap[col] = i
 	}
 
-	var Accounts []models.Account
-	var Customers []models.Customer
+	var Accounts []model.Account
+	var Customers []model.Customer
 
 	// Fetch all occupations from the database and populate the map
 	occupations := []entity.Occupation{}
@@ -60,15 +61,13 @@ func parseAndInsertExcel(file multipart.File) error {
 		return fmt.Errorf("failed to fetch occupations: %w", err)
 	}
 
-	// Initialize the occupationsMap
 	occupationsMap := make(map[string]*int32)
 	for _, occupation := range occupations {
 		occupationsMap[occupation.OccupationName] = &occupation.OccupationID
 	}
 
 	for _, row := range rows[1:] {
-		// Prepare the Account entry
-		accountEntry := models.Account{
+		accountEntry := model.Account{
 			AccountID:         mapRowToValue(row, headerMap, "accountId"),
 			CustomerID:        mapRowToValue(row, headerMap, "customerId"),
 			ProductType:       mapRowToNullableValue(row, headerMap, "productType"),
@@ -88,8 +87,7 @@ func parseAndInsertExcel(file multipart.File) error {
 			occupationID = occupationsMap[*occupationName]
 		}
 
-		// Prepare the Customer entry
-		customerEntry := models.Customer{
+		customerEntry := model.Customer{
 			CustomerID:         mapRowToValue(row, headerMap, "customerId"),
 			CustomerName:       mapRowToNullableValue(row, headerMap, "customerName"),
 			OccupationID:       occupationID,
@@ -127,18 +125,15 @@ func parseAndInsertExcel(file multipart.File) error {
 	}
 
 	// Update or insert customers based on existence
-	var newCustomers []models.Customer
+	var newCustomers []model.Customer
 	for _, customer := range Customers {
-		// Check if the customer already exists in the database
 		existingCustomer, exists := existingCustomerMap[customer.CustomerID]
 
 		if exists {
-			// Compare and update customer if fields have changed
 			if err := compareAndUpdateCustomer(existingCustomer, customer); err != nil {
 				return fmt.Errorf("failed to compare and update customer: %w", err)
 			}
 		} else {
-			// Add to newCustomers list if it doesn't exist in the database
 			newCustomers = append(newCustomers, customer)
 		}
 	}
@@ -158,32 +153,29 @@ func parseAndInsertExcel(file multipart.File) error {
 	}
 
 	// Update or insert accounts based on existence
-	var newAccounts []models.Account
+	var newAccounts []model.Account
 	for _, account := range Accounts {
-		// Check if the account already exists in the database
 		existingAccount, exists := existingAccountMap[account.AccountID]
 
 		if exists {
-			// Compare and update account if fields have changed
 			if err := compareAndUpdateAccount(existingAccount, account); err != nil {
 				return fmt.Errorf("failed to compare and update account: %w", err)
 			}
 		} else {
-			// Add to newAccounts list if the account doesn't exist in the database
 			newAccounts = append(newAccounts, account)
 		}
 	}
 
 	// Perform batch insert for new customer records
 	if len(newCustomers) > 0 {
-		if err := database.DB.CreateInBatches(newCustomers, 100).Error; err != nil {
+		if err := database.DB.CreateInBatches(newCustomers, 1000).Error; err != nil {
 			return fmt.Errorf("failed to insert new customer batch: %w", err)
 		}
 	}
 
 	// Perform batch insert for new account records
 	if len(newAccounts) > 0 {
-		if err := database.DB.CreateInBatches(newAccounts, 100).Error; err != nil {
+		if err := database.DB.CreateInBatches(newAccounts, 1000).Error; err != nil {
 			return fmt.Errorf("failed to insert new account batch: %w", err)
 		}
 	}
@@ -245,9 +237,9 @@ func mapRowToNullableInt(row []string, headerMap map[string]int, field string) *
 	return &r
 }
 
-func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
-	seen := make(map[string]models.Customer)
-	result := []models.Customer{}
+func removeDuplicateCustomers(Customers []model.Customer) []model.Customer {
+	seen := make(map[string]model.Customer)
+	result := []model.Customer{}
 
 	for _, customerEntry := range Customers {
 		seen[customerEntry.CustomerID] = customerEntry
@@ -260,7 +252,7 @@ func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
 	return result
 }
 
-func getCustomerIDs(Customers []models.Customer) []string {
+func getCustomerIDs(Customers []model.Customer) []string {
 	var ids []string
 	for _, customer := range Customers {
 		ids = append(ids, customer.CustomerID)
@@ -268,7 +260,7 @@ func getCustomerIDs(Customers []models.Customer) []string {
 	return ids
 }
 
-func getAccountIDs(Accounts []models.Account) []string {
+func getAccountIDs(Accounts []model.Account) []string {
 	var ids []string
 	for _, account := range Accounts {
 		ids = append(ids, account.AccountID)
@@ -276,7 +268,7 @@ func getAccountIDs(Accounts []models.Account) []string {
 	return ids
 }
 
-func compareAndUpdateAccount(existingAccount entity.Account, account models.Account) error {
+func compareAndUpdateAccount(existingAccount entity.Account, account model.Account) error {
 	var updatedFields []string
 
 	// mini-helper to fire off logDiff and track the field name
@@ -285,31 +277,31 @@ func compareAndUpdateAccount(existingAccount entity.Account, account models.Acco
 		updatedFields = append(updatedFields, fieldName)
 	}
 
-	if !compareNullable(existingAccount.CustomerID, account.CustomerID) {
+	if !util.CompareNullable(existingAccount.CustomerID, account.CustomerID) {
 		recordChange("CustomerID", existingAccount.CustomerID, account.CustomerID)
 	}
-	if !compareNullable(existingAccount.ProductType, account.ProductType) {
+	if !util.CompareNullable(existingAccount.ProductType, account.ProductType) {
 		recordChange("ProductType", existingAccount.ProductType, account.ProductType)
 	}
-	if !compareNullable(existingAccount.OutstandingAmount, account.OutstandingAmount) {
+	if !util.CompareNullable(existingAccount.OutstandingAmount, account.OutstandingAmount) {
 		recordChange("OutstandingAmount", existingAccount.OutstandingAmount, account.OutstandingAmount)
 	}
-	if !compareNullable(existingAccount.OverdueAmount, account.OverdueAmount) {
+	if !util.CompareNullable(existingAccount.OverdueAmount, account.OverdueAmount) {
 		recordChange("OverdueAmount", existingAccount.OverdueAmount, account.OverdueAmount)
 	}
-	if !compareNullable(existingAccount.DaysPastDue, account.DaysPastDue) {
+	if !util.CompareNullable(existingAccount.DaysPastDue, account.DaysPastDue) {
 		recordChange("DaysPastDue", existingAccount.DaysPastDue, account.DaysPastDue)
 	}
-	if !compareNullable(existingAccount.SelfCured, account.SelfCured) {
+	if !util.CompareNullable(existingAccount.SelfCured, account.SelfCured) {
 		recordChange("SelfCured", existingAccount.SelfCured, account.SelfCured)
 	}
-	if !compareNullable(existingAccount.TopUpScore, account.TopUpScore) {
+	if !util.CompareNullable(existingAccount.TopUpScore, account.TopUpScore) {
 		recordChange("TopUpScore", existingAccount.TopUpScore, account.TopUpScore)
 	}
-	if !compareNullable(existingAccount.LossOnSale, account.LossOnSale) {
+	if !util.CompareNullable(existingAccount.LossOnSale, account.LossOnSale) {
 		recordChange("LossOnSale", existingAccount.LossOnSale, account.LossOnSale)
 	}
-	if !compareNullable(existingAccount.LossOnClaim, account.LossOnClaim) {
+	if !util.CompareNullable(existingAccount.LossOnClaim, account.LossOnClaim) {
 		recordChange("LossOnClaim", existingAccount.LossOnClaim, account.LossOnClaim)
 	}
 
@@ -329,7 +321,7 @@ func compareAndUpdateAccount(existingAccount entity.Account, account models.Acco
 	return nil
 }
 
-func compareAndUpdateCustomer(existing entity.Customer, customer models.Customer) error {
+func compareAndUpdateCustomer(existing entity.Customer, customer model.Customer) error {
 	var updatedFields []string
 
 	recordChange := func(fieldName string, oldVal, newVal any) {
@@ -337,40 +329,40 @@ func compareAndUpdateCustomer(existing entity.Customer, customer models.Customer
 		updatedFields = append(updatedFields, fieldName)
 	}
 
-	if !compareNullable(existing.CustomerName, customer.CustomerName) {
+	if !util.CompareNullable(existing.CustomerName, customer.CustomerName) {
 		recordChange("CustomerName", existing.CustomerName, customer.CustomerName)
 	}
-	if !compareNullable(existing.OccupationID, customer.OccupationID) {
+	if !util.CompareNullable(existing.OccupationID, customer.OccupationID) {
 		recordChange("OccupationID", existing.OccupationID, customer.OccupationID)
 	}
-	if !compareNullable(existing.RegisterAddress, customer.RegisterAddress) {
+	if !util.CompareNullable(existing.RegisterAddress, customer.RegisterAddress) {
 		recordChange("RegisterAddress", existing.RegisterAddress, customer.RegisterAddress)
 	}
-	if !compareNullable(existing.RegisterTambol, customer.RegisterTambol) {
+	if !util.CompareNullable(existing.RegisterTambol, customer.RegisterTambol) {
 		recordChange("RegisterTambol", existing.RegisterTambol, customer.RegisterTambol)
 	}
-	if !compareNullable(existing.RegisterAmphur, customer.RegisterAmphur) {
+	if !util.CompareNullable(existing.RegisterAmphur, customer.RegisterAmphur) {
 		recordChange("RegisterAmphur", existing.RegisterAmphur, customer.RegisterAmphur)
 	}
-	if !compareNullable(existing.RegisterProvince, customer.RegisterProvince) {
+	if !util.CompareNullable(existing.RegisterProvince, customer.RegisterProvince) {
 		recordChange("RegisterProvince", existing.RegisterProvince, customer.RegisterProvince)
 	}
-	if !compareNullable(existing.RegisterPostalCode, customer.RegisterPostalCode) {
+	if !util.CompareNullable(existing.RegisterPostalCode, customer.RegisterPostalCode) {
 		recordChange("RegisterPostalCode", existing.RegisterPostalCode, customer.RegisterPostalCode)
 	}
-	if !compareNullable(existing.CurrentAddress, customer.CurrentAddress) {
+	if !util.CompareNullable(existing.CurrentAddress, customer.CurrentAddress) {
 		recordChange("CurrentAddress", existing.CurrentAddress, customer.CurrentAddress)
 	}
-	if !compareNullable(existing.CurrentTambol, customer.CurrentTambol) {
+	if !util.CompareNullable(existing.CurrentTambol, customer.CurrentTambol) {
 		recordChange("CurrentTambol", existing.CurrentTambol, customer.CurrentTambol)
 	}
-	if !compareNullable(existing.CurrentAmphur, customer.CurrentAmphur) {
+	if !util.CompareNullable(existing.CurrentAmphur, customer.CurrentAmphur) {
 		recordChange("CurrentAmphur", existing.CurrentAmphur, customer.CurrentAmphur)
 	}
-	if !compareNullable(existing.CurrentProvince, customer.CurrentProvince) {
+	if !util.CompareNullable(existing.CurrentProvince, customer.CurrentProvince) {
 		recordChange("CurrentProvince", existing.CurrentProvince, customer.CurrentProvince)
 	}
-	if !compareNullable(existing.CurrentPostalCode, customer.CurrentPostalCode) {
+	if !util.CompareNullable(existing.CurrentPostalCode, customer.CurrentPostalCode) {
 		recordChange("CurrentPostalCode", existing.CurrentPostalCode, customer.CurrentPostalCode)
 	}
 
@@ -388,44 +380,6 @@ func compareAndUpdateCustomer(existing entity.Customer, customer models.Customer
 	}
 
 	return nil
-}
-
-func compareNullable(a, b any) bool {
-	switch aVal := a.(type) {
-	case *sql.NullString:
-		bVal, ok := b.(*string)
-		if !ok {
-			return false
-		}
-		if aVal == nil && bVal == nil {
-			return true
-		}
-		if aVal == nil || bVal == nil {
-			return false
-		}
-		return aVal.String == *bVal
-
-	case *sql.NullInt32:
-		bVal, ok := b.(*int32)
-		if !ok {
-			return false
-		}
-		if aVal == nil && bVal == nil {
-			return true
-		}
-		if aVal == nil || bVal == nil {
-			return false
-		}
-		return aVal.Int32 == *bVal
-	case string:
-		bVal, ok := b.(string)
-		if !ok {
-			return false
-		}
-		return aVal == bVal
-	default:
-		return false
-	}
 }
 
 func logDiff(fieldName string, oldVal any, newVal any) {
@@ -460,7 +414,7 @@ func logDiff(fieldName string, oldVal any, newVal any) {
 	log.Printf("%s changed: Old: %s, New: %s", fieldName, oldStr, newStr)
 }
 
-func ConvertModelToEntityCustomer(m models.Customer) entity.Customer {
+func ConvertModelToEntityCustomer(m model.Customer) entity.Customer {
 	e := entity.Customer{
 		CustomerID: m.CustomerID,
 	}
@@ -494,7 +448,7 @@ func ConvertModelToEntityCustomer(m models.Customer) entity.Customer {
 	return e
 }
 
-func ConvertModelToEntityAccount(m models.Account) entity.Account {
+func ConvertModelToEntityAccount(m model.Account) entity.Account {
 	e := entity.Account{
 		AccountID: m.AccountID,
 	}

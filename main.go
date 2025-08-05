@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"nhj-poc/controllers"
+	"nhj-poc/controller"
 	"nhj-poc/database"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +18,7 @@ func main() {
 
 	database.Connect()
 
-	r.POST("/upload-excel", controllers.UploadExcel)
+	r.POST("/upload-excel", controller.UploadExcel)
 
 	r.Run(":8080")
 }

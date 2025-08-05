@@ -69,8 +69,8 @@ func parseAndInsertExcel(file multipart.File) error {
 	for _, row := range rows[1:] {
 		// Prepare the Account entry
 		accountEntry := models.Account{
-			AccountID:         mapRowToNullableValue(row, headerMap, "accountId"),
-			CustomerID:        mapRowToNullableValue(row, headerMap, "customerId"),
+			AccountID:         mapRowToValue(row, headerMap, "accountId"),
+			CustomerID:        mapRowToValue(row, headerMap, "customerId"),
 			ProductType:       mapRowToNullableValue(row, headerMap, "productType"),
 			OutstandingAmount: mapRowToNullableInt(row, headerMap, "outstandingAmount"),
 			OverdueAmount:     mapRowToNullableInt(row, headerMap, "overDueAmount"),
@@ -90,7 +90,7 @@ func parseAndInsertExcel(file multipart.File) error {
 
 		// Prepare the Customer entry
 		customerEntry := models.Customer{
-			CustomerID:         mapRowToNullableValue(row, headerMap, "customerId"),
+			CustomerID:         mapRowToValue(row, headerMap, "customerId"),
 			CustomerName:       mapRowToNullableValue(row, headerMap, "customerName"),
 			OccupationID:       occupationID,
 			RegisterAddress:    mapRowToNullableValue(row, headerMap, "registerAddress"),
@@ -130,7 +130,7 @@ func parseAndInsertExcel(file multipart.File) error {
 	var newCustomers []models.Customer
 	for _, customer := range Customers {
 		// Check if the customer already exists in the database
-		existingCustomer, exists := existingCustomerMap[*customer.CustomerID]
+		existingCustomer, exists := existingCustomerMap[customer.CustomerID]
 
 		if exists {
 			// Compare and update customer if fields have changed
@@ -161,7 +161,7 @@ func parseAndInsertExcel(file multipart.File) error {
 	var newAccounts []models.Account
 	for _, account := range Accounts {
 		// Check if the account already exists in the database
-		existingAccount, exists := existingAccountMap[*account.AccountID]
+		existingAccount, exists := existingAccountMap[account.AccountID]
 
 		if exists {
 			// Compare and update account if fields have changed
@@ -250,7 +250,7 @@ func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
 	result := []models.Customer{}
 
 	for _, customerEntry := range Customers {
-		seen[*customerEntry.CustomerID] = customerEntry
+		seen[customerEntry.CustomerID] = customerEntry
 	}
 
 	for _, customerEntry := range seen {
@@ -263,7 +263,7 @@ func removeDuplicateCustomers(Customers []models.Customer) []models.Customer {
 func getCustomerIDs(Customers []models.Customer) []string {
 	var ids []string
 	for _, customer := range Customers {
-		ids = append(ids, *customer.CustomerID)
+		ids = append(ids, customer.CustomerID)
 	}
 	return ids
 }
@@ -271,7 +271,7 @@ func getCustomerIDs(Customers []models.Customer) []string {
 func getAccountIDs(Accounts []models.Account) []string {
 	var ids []string
 	for _, account := range Accounts {
-		ids = append(ids, *account.AccountID)
+		ids = append(ids, account.AccountID)
 	}
 	return ids
 }
@@ -315,13 +315,13 @@ func compareAndUpdateAccount(existingAccount entity.Account, account models.Acco
 
 	if len(updatedFields) > 0 {
 		log.Printf("Updating account %s; changed fields: %v",
-			*account.AccountID, updatedFields)
+			account.AccountID, updatedFields)
 		if err := database.DB.
 			Model(&existingAccount).
 			Where("account_id = ?", account.AccountID).
 			Updates(ConvertModelToEntityAccount(account)).
 			Error; err != nil {
-			return fmt.Errorf("failed to update account %d: %w",
+			return fmt.Errorf("failed to update account %s: %w",
 				account.AccountID, err)
 		}
 	}
@@ -337,9 +337,6 @@ func compareAndUpdateCustomer(existing entity.Customer, customer models.Customer
 		updatedFields = append(updatedFields, fieldName)
 	}
 
-	if existing.CustomerID != *customer.CustomerID {
-		recordChange("CustomerID", existing.CustomerID, customer.CustomerID)
-	}
 	if !compareNullable(existing.CustomerName, customer.CustomerName) {
 		recordChange("CustomerName", existing.CustomerName, customer.CustomerName)
 	}
@@ -379,13 +376,13 @@ func compareAndUpdateCustomer(existing entity.Customer, customer models.Customer
 
 	if len(updatedFields) > 0 {
 		log.Printf("Updating customer %s; changed fields: %v",
-			*customer.CustomerID, updatedFields)
+			customer.CustomerID, updatedFields)
 		if err := database.DB.
 			Model(&existing).
 			Where("customer_id = ?", customer.CustomerID).
 			Updates(ConvertModelToEntityCustomer(customer)).
 			Error; err != nil {
-			return fmt.Errorf("failed to update customer %d: %w",
+			return fmt.Errorf("failed to update customer %s: %w",
 				customer.CustomerID, err)
 		}
 	}
@@ -420,7 +417,12 @@ func compareNullable(a, b any) bool {
 			return false
 		}
 		return aVal.Int32 == *bVal
-
+	case string:
+		bVal, ok := b.(string)
+		if !ok {
+			return false
+		}
+		return aVal == bVal
 	default:
 		return false
 	}
@@ -460,11 +462,7 @@ func logDiff(fieldName string, oldVal any, newVal any) {
 
 func ConvertModelToEntityCustomer(m models.Customer) entity.Customer {
 	e := entity.Customer{
-		CustomerID: "",
-	}
-
-	if m.CustomerID != nil {
-		e.CustomerID = *m.CustomerID
+		CustomerID: m.CustomerID,
 	}
 
 	toNullString := func(s *string) *sql.NullString {
@@ -498,11 +496,7 @@ func ConvertModelToEntityCustomer(m models.Customer) entity.Customer {
 
 func ConvertModelToEntityAccount(m models.Account) entity.Account {
 	e := entity.Account{
-		AccountID: "",
-	}
-
-	if m.AccountID != nil {
-		e.AccountID = *m.AccountID
+		AccountID: m.AccountID,
 	}
 
 	toNullString := func(s *string) *sql.NullString {
@@ -518,7 +512,7 @@ func ConvertModelToEntityAccount(m models.Account) entity.Account {
 		return &sql.NullInt32{Valid: false}
 	}
 
-	e.CustomerID = toNullString(m.CustomerID)
+	e.CustomerID = m.CustomerID
 	e.ProductType = toNullString(m.ProductType)
 	e.OutstandingAmount = toNullInt32(m.OutstandingAmount)
 	e.OverdueAmount = toNullInt32(m.OverdueAmount)

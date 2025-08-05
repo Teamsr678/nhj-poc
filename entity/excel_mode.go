@@ -4,7 +4,7 @@ import "database/sql"
 
 type Account struct {
 	AccountID         string          `gorm:"column:account_id" json:"account_id"`
-	CustomerID        *sql.NullString `gorm:"column:customer_id" json:"customer_id"`
+	CustomerID        string          `gorm:"column:customer_id" json:"customer_id"`
 	ProductType       *sql.NullString `gorm:"column:product_type" json:"product_type"`
 	OutstandingAmount *sql.NullInt32  `gorm:"column:outstanding_amount" json:"outstanding_amount"`
 	OverdueAmount     *sql.NullInt32  `gorm:"column:overdue_amount" json:"overdue_amount"`

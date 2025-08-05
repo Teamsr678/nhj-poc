@@ -1,8 +1,8 @@
 package models
 
 type Account struct {
-	AccountID         *string
-	CustomerID        *string
+	AccountID         string
+	CustomerID        string
 	ProductType       *string
 	OutstandingAmount *int32
 	OverdueAmount     *int32
@@ -14,7 +14,7 @@ type Account struct {
 }
 
 type Customer struct {
-	CustomerID         *string
+	CustomerID         string
 	CustomerName       *string
 	OccupationID       *int32
 	RegisterAddress    *string

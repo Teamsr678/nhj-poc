@@ -125,7 +125,7 @@ func parseAndInsertExcel(file multipart.File) error {
 	}
 
 	// Update or insert customers based on existence
-	var newCustomers []model.Customer
+	var newCustomers []entity.Customer
 	for _, customer := range Customers {
 		existingCustomer, exists := existingCustomerMap[customer.CustomerID]
 
@@ -134,7 +134,8 @@ func parseAndInsertExcel(file multipart.File) error {
 				return fmt.Errorf("failed to compare and update customer: %w", err)
 			}
 		} else {
-			newCustomers = append(newCustomers, customer)
+			c := ConvertModelToEntityCustomer(customer)
+			newCustomers = append(newCustomers, c)
 		}
 	}
 

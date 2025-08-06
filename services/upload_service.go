@@ -139,6 +139,13 @@ func parseAndInsertExcel(file multipart.File) error {
 		}
 	}
 
+	// Perform batch insert for new customer records
+	if len(newCustomers) > 0 {
+		if err := database.DB.CreateInBatches(newCustomers, 1000).Error; err != nil {
+			return fmt.Errorf("failed to insert new customer batch: %w", err)
+		}
+	}
+
 	// Select existing accounts to avoid duplicates
 	var existingAccounts []entity.Account
 	if err := database.DB.Model(&entity.Account{}).
@@ -165,13 +172,6 @@ func parseAndInsertExcel(file multipart.File) error {
 		} else {
 			ac := ConvertModelToEntityAccount(account)
 			newAccounts = append(newAccounts, ac)
-		}
-	}
-
-	// Perform batch insert for new customer records
-	if len(newCustomers) > 0 {
-		if err := database.DB.CreateInBatches(newCustomers, 1000).Error; err != nil {
-			return fmt.Errorf("failed to insert new customer batch: %w", err)
 		}
 	}
 

@@ -161,7 +161,7 @@ func UpdatePaymentStatusByID(paymentId int) error {
 		return err
 	}
 	if payment != nil && payment.PaymentStatusID.Int32 != constant.Normal {
-		return fmt.Errorf("payment for payment_id %d is payment_status_id %d", paymentId, payment.PaymentStatusID.Int32)
+		return fmt.Errorf("Can't update payment because payment_status_id='%d'", payment.PaymentStatusID.Int32)
 	}
 
 	totalPayment, err := GetTotalPaymentByPaymentID(database.DB, paymentId)

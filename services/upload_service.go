@@ -153,7 +153,7 @@ func parseAndInsertExcel(file multipart.File) error {
 	}
 
 	// Update or insert accounts based on existence
-	var newAccounts []model.Account
+	var newAccounts []entity.Account
 	for _, account := range Accounts {
 		existingAccount, exists := existingAccountMap[account.AccountID]
 
@@ -162,7 +162,8 @@ func parseAndInsertExcel(file multipart.File) error {
 				return fmt.Errorf("failed to compare and update account: %w", err)
 			}
 		} else {
-			newAccounts = append(newAccounts, account)
+			ac := ConvertModelToEntityAccount(account)
+			newAccounts = append(newAccounts, ac)
 		}
 	}
 

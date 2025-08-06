@@ -74,10 +74,6 @@ func InsertTransaction(tModel model.Transaction) error {
 	return nil
 }
 
-func UpdatePayment() error {
-	return nil
-}
-
 func accountIDExists(db *gorm.DB, accountID string) (bool, error) {
 	var count int64
 	if err := db.
@@ -155,6 +151,26 @@ func GetTotalPaymentByPaymentID(db *gorm.DB, paymentID int) (*entity.TotalPaymen
 	return &results, nil
 }
 
+func UpdatePaymentStatusByIDs(ids []int) error {
+	var paymentIds []int
+	var err error
+
+	if len(ids) == 0 {
+		paymentIds, err = getOverduePaymentIDs(database.DB)
+		if err != nil {
+			return fmt.Errorf("failed to get overdue payment IDs: %w", err)
+		}
+	}
+
+	for _, paymentId := range paymentIds {
+		if err := UpdatePaymentStatusByID(paymentId); err != nil {
+			return fmt.Errorf("failed to update payment status for ID %d: %w", paymentId, err)
+		}
+	}
+
+	return nil
+}
+
 func UpdatePaymentStatusByID(paymentId int) error {
 	payment, err := getPaymentByPaymentID(database.DB, paymentId)
 	if err != nil {
@@ -194,4 +210,18 @@ func paymentIDExists(db *gorm.DB, paymentID int) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func getOverduePaymentIDs(db *gorm.DB) ([]int, error) {
+	cutoff := time.Now().AddDate(0, 0, -3)
+
+	var ids []int
+	if err := db.
+		Model(&entity.Payment{}).
+		Where("due_date < ?", cutoff).
+		Pluck("payment_id", &ids).Error; err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }

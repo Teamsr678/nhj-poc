@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"nhj-poc/controller"
 	"nhj-poc/database"
+	"nhj-poc/routine"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -17,6 +20,7 @@ func main() {
 	}
 
 	database.Connect()
+	callRoutine()
 
 	r.POST("/insert-payment", controller.InsertPayment)
 	r.PUT("/update-payment-status", controller.UpdatePaymentStatus)
@@ -29,4 +33,11 @@ func main() {
 	r.GET("/get-route", controller.GetRouteHandler)
 
 	r.Run(":8080")
+}
+
+func callRoutine() {
+	_, err := routine.StartUpdatePaymentStatusJob(context.Background())
+	if err != nil {
+		log.Fatalf("failed to start batch routine: %v", err)
+	}
 }

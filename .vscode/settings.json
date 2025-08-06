@@ -3,6 +3,7 @@
         "Amphur",
         "dbname",
         "excelize",
+        "gocron",
         "godotenv",
         "gonic",
         "gorm",

@@ -17,7 +17,7 @@ func StartUpdatePaymentStatusJob(ctx context.Context) (*gocron.Scheduler, error)
 
 	s := gocron.NewScheduler(loc)
 
-	_, err = s.Every(1).Day().At("14:49").Do(func() {
+	_, err = s.Every(1).Day().At("15:33").Do(func() {
 		log.Println("🔄 Daily UpdatePaymentStatus job starting")
 		services.UpdatePaymentStatusByIDs([]int{})
 		log.Println("✅ Daily UpdatePaymentStatus job finished")

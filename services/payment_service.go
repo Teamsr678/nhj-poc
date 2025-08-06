@@ -218,7 +218,7 @@ func getOverduePaymentIDs(db *gorm.DB) ([]int, error) {
 	var ids []int
 	if err := db.
 		Model(&entity.Payment{}).
-		Where("due_date < ?", cutoff).
+		Where("due_date < ? AND payment_status_id = ?", cutoff, constant.Normal).
 		Pluck("payment_id", &ids).Error; err != nil {
 		return nil, err
 	}

@@ -13,3 +13,7 @@ type Transaction struct {
 	PaymentAmount   int       `json:"payment_amount"`
 	TransactionDate time.Time `json:"transaction_date"`
 }
+
+type UpdatePaymentStatus struct {
+	PaymentID int `json:"payment_id"`
+}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"nhj-poc/database"
-	"nhj-poc/entity"
+	"nhj-poc/domain/entity"
 	"nhj-poc/models"
 	"os"
 	"time"

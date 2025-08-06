@@ -16,3 +16,18 @@ type Payment struct {
 func (Payment) TableName() string {
 	return "payment"
 }
+
+type Transaction struct {
+	TransactionID   int       `gorm:"column:transaction_id;primaryKey;autoIncrement"`
+	PaymentID       int       `gorm:"column:payment_id"`
+	PaymentAmount   int       `gorm:"column:payment_amount"`
+	TransactionDate time.Time `gorm:"column:transaction_date"`
+}
+
+func (Transaction) TableName() string {
+	return "transaction"
+}
+
+type TotalPaymentAmount struct {
+	TotalPaymentAmount int `gorm:"column:total_payment_amount"`
+}

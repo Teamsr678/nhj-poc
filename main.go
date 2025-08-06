@@ -20,5 +20,10 @@ func main() {
 
 	r.POST("/upload-excel", controllers.UploadExcel)
 
+	r.GET("/get-map-link", controllers.GetMapsLinkHandler)
+	r.POST("/update-location", controllers.UpdateLocationHandler)
+	r.GET("/get-locations", controllers.GetLocationsHandler)
+	r.GET("/get-route", controllers.GetRouteHandler)
+
 	r.Run(":8080")
 }

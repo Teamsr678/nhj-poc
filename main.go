@@ -18,6 +18,7 @@ func main() {
 
 	database.Connect()
 
+	r.POST("/insert-payment", controller.InsertPayment)
 	r.POST("/upload-excel", controller.UploadExcel)
 
 	r.Run(":8080")

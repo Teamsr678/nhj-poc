@@ -49,3 +49,10 @@ func IntPtrToNullInt32(i *int) *sql.NullInt32 {
 		Valid: true,
 	}
 }
+
+func IntToNullInt32(i int) *sql.NullInt32 {
+	return &sql.NullInt32{
+		Int32: int32(i),
+		Valid: true,
+	}
+}

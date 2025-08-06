@@ -11,15 +11,15 @@ import (
 )
 
 func InsertPayment(c *gin.Context) {
-	var payment api.Payment
+	var pAPI api.Payment
 
-	if err := c.ShouldBindJSON(&payment); err != nil {
+	if err := c.ShouldBindJSON(&pAPI); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload: " + err.Error()})
 		return
 	}
 
 	var pModel model.Payment
-	if err := copier.Copy(&pModel, &payment); err != nil {
+	if err := copier.Copy(&pModel, &pAPI); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -33,6 +33,19 @@ func InsertPayment(c *gin.Context) {
 }
 
 func InsertTransaction(c *gin.Context) {
+	var tAPI api.Transaction
+
+	if err := c.ShouldBindJSON(&tAPI); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload: " + err.Error()})
+		return
+	}
+
+	var tModel model.Transaction
+	if err := copier.Copy(&tModel, &tAPI); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	err := services.InsertTransaction()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -40,6 +53,6 @@ func InsertTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Successful",
+		"message": "Transaction created successfully",
 	})
 }

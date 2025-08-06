@@ -21,10 +21,10 @@ func main() {
 	r.POST("/insert-payment", controller.InsertPayment)
 	r.POST("/upload-excel", controller.UploadExcel)
 
-	r.GET("/get-map-link", controllers.GetMapsLinkHandler)
-	r.POST("/update-location", controllers.UpdateLocationHandler)
-	r.GET("/get-locations", controllers.GetLocationsHandler)
-	r.GET("/get-route", controllers.GetRouteHandler)
+	r.GET("/get-map-link", controller.GetMapsLinkHandler)
+	r.POST("/update-location", controller.UpdateLocationHandler)
+	r.GET("/get-locations", controller.GetLocationsHandler)
+	r.GET("/get-route", controller.GetRouteHandler)
 
 	r.Run(":8080")
 }

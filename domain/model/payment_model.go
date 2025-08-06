@@ -9,7 +9,6 @@ type Payment struct {
 }
 
 type Transaction struct {
-	PaymentID       int
-	PaymentAmount   int
-	TransactionDate time.Time
+	PaymentID     int
+	PaymentAmount int
 }

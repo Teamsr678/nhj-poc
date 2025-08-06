@@ -56,3 +56,18 @@ func InsertTransaction(c *gin.Context) {
 		"message": "Transaction created successfully",
 	})
 }
+
+func UpdatePaymentStatus(c *gin.Context) {
+	var updatePaymentStatusAPI api.UpdatePaymentStatus
+	if err := c.ShouldBindJSON(&updatePaymentStatusAPI); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload: " + err.Error()})
+		return
+	}
+
+	if err := services.UpdatePaymentStatusByID(updatePaymentStatusAPI.PaymentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Payment status update successfully"})
+}

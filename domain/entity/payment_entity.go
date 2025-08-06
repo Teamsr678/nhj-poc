@@ -27,3 +27,7 @@ type Transaction struct {
 func (Transaction) TableName() string {
 	return "transaction"
 }
+
+type TotalPaymentAmount struct {
+	TotalPaymentAmount int `gorm:"column:total_payment_amount"`
+}

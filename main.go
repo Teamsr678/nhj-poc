@@ -19,6 +19,7 @@ func main() {
 	database.Connect()
 
 	r.POST("/insert-payment", controller.InsertPayment)
+	r.PUT("/update-payment-status", controller.UpdatePaymentStatus)
 	r.POST("/upload-excel", controller.UploadExcel)
 	r.POST("/insert-transaction", controller.InsertTransaction)
 

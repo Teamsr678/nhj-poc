@@ -12,3 +12,7 @@ type Transaction struct {
 	PaymentID     int `json:"payment_id"`
 	PaymentAmount int `json:"payment_amount"`
 }
+
+type UpdatePaymentStatus struct {
+	PaymentID int `json:"payment_id"`
+}

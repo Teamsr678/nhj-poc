@@ -177,21 +177,6 @@ func GenerateMapHTML(oaID string, destLat float64, destLon float64) (*string, er
 		<div id="map">
 			<div class="error-message" id="map-error"></div>
 		</div>
-		<div class="controls">
-			<h2>Update Employee Location</h2>
-			<form id="update-form">
-				<input type="hidden" name="employee_id" value="%s">
-				<label for="lat">Latitude:</label>
-				<input type="number" id="lat" name="lat" step="any" required>
-				<label for="lon">Longitude:</label>
-				<input type="number" id="lon" name="lon" step="any" required>
-				<button type="submit">Update Location</button>
-			</form>
-			<div id="current-location-info">
-				<p><strong>Current Location:</strong> <span id="current-coords">N/A</span></p>
-				<p><strong>Last Updated:</strong> <span id="last-updated">N/A</span></p>
-			</div>
-		</div>
 		<script>
 			const oaID = "%s";
 			const destLat = %f;
@@ -286,29 +271,11 @@ func GenerateMapHTML(oaID string, destLat float64, destLon float64) (*string, er
 					})
 					.catch(error => console.error('Error fetching location:', error));
 			}
-
-			updateForm.addEventListener("submit", function(event) {
-				event.preventDefault();
-				const formData = new FormData(updateForm);
-
-				fetch('/update-location', {
-					method: 'POST',
-					body: formData
-				})
-				.then(response => response.json())
-				.then(data => {
-					console.log('Location update response:', data);
-					// The setInterval will handle the map update, but we can call it manually for an immediate update.
-					updateMap();
-				})
-				.catch(error => console.error('Error updating location:', error));
-			});
-
 			window.onload = initMap;
 		</script>
 	</body>
 	</html>
-	`, googleMapsAPIKey, oaID, oaID, oaID, destLat, destLon, googleMapsAPIKey, startLat, startLon)
+	`, googleMapsAPIKey, oaID, oaID, destLat, destLon, googleMapsAPIKey, startLat, startLon)
 
 	return &htmlContent, nil
 }

@@ -20,6 +20,7 @@ func main() {
 
 	r.POST("/insert-payment", controller.InsertPayment)
 	r.POST("/upload-excel", controller.UploadExcel)
+	r.POST("/insert-transaction", controller.InsertTransaction)
 
 	r.GET("/get-map-link", controller.GetMapsLinkHandler)
 	r.POST("/update-location", controller.UpdateLocationHandler)

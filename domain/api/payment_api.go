@@ -9,7 +9,6 @@ type Payment struct {
 }
 
 type Transaction struct {
-	PaymentID       int       `json:"payment_id"`
-	PaymentAmount   int       `json:"payment_amount"`
-	TransactionDate time.Time `json:"transaction_date"`
+	PaymentID     int `json:"payment_id"`
+	PaymentAmount int `json:"payment_amount"`
 }

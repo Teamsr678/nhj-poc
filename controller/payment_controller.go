@@ -46,7 +46,7 @@ func InsertTransaction(c *gin.Context) {
 		return
 	}
 
-	err := services.InsertTransaction()
+	err := services.InsertTransaction(tModel)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

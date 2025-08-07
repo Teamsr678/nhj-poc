@@ -11,6 +11,7 @@ type Account struct {
 	TopUpScore        *string
 	LossOnSale        *int32
 	LossOnClaim       *string
+	EarlyOA           *string
 }
 
 type Customer struct {

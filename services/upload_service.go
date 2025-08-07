@@ -78,6 +78,7 @@ func parseAndInsertExcel(file multipart.File) error {
 			TopUpScore:        mapRowToNullableValue(row, headerMap, "topUpScore"),
 			LossOnSale:        mapRowToNullableInt(row, headerMap, "lossOnSale"),
 			LossOnClaim:       mapRowToNullableValue(row, headerMap, "lossOnClaim"),
+			EarlyOA:           mapRowToNullableValue(row, headerMap, "earlyOA"),
 		}
 		Accounts = append(Accounts, accountEntry)
 
@@ -306,6 +307,9 @@ func compareAndUpdateAccount(existingAccount entity.Account, account model.Accou
 	if !util.CompareNullable(existingAccount.LossOnClaim, account.LossOnClaim) {
 		recordChange("LossOnClaim", existingAccount.LossOnClaim, account.LossOnClaim)
 	}
+	if !util.CompareNullable(existingAccount.EarlyOA, account.EarlyOA) {
+		recordChange("EarlyOA", existingAccount.EarlyOA, account.EarlyOA)
+	}
 
 	if len(updatedFields) > 0 {
 		log.Printf("Updating account %s; changed fields: %v",
@@ -477,6 +481,7 @@ func ConvertModelToEntityAccount(m model.Account) entity.Account {
 	e.TopUpScore = toNullString(m.TopUpScore)
 	e.LossOnSale = toNullInt32(m.LossOnSale)
 	e.LossOnClaim = toNullString(m.LossOnClaim)
+	e.EarlyOA = toNullString(m.EarlyOA)
 
 	return e
 }

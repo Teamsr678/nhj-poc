@@ -13,6 +13,7 @@ type Account struct {
 	TopUpScore        *sql.NullString `gorm:"column:top_up_score" json:"top_up_score"`
 	LossOnSale        *sql.NullInt32  `gorm:"column:loss_on_sale" json:"loss_on_sale"`
 	LossOnClaim       *sql.NullString `gorm:"column:loss_on_claim" json:"loss_on_claim"`
+	EarlyOA           *sql.NullString `gorm:"column:early_oa" json:"early_oa"`
 }
 
 func (Account) TableName() string {

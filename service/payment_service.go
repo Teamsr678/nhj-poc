@@ -6,28 +6,18 @@ import (
 	"nhj-poc/database"
 	"nhj-poc/domain/entity"
 	"nhj-poc/domain/model"
+	"nhj-poc/repository"
 	"nhj-poc/util"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 func InsertPayment(pModel model.Payment) error {
-	exists, err := accountIDExists(database.DB, pModel.AccountID)
+	exists, err := repository.AccountIDExists(database.DB, pModel.AccountID)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return fmt.Errorf("account_id not found")
-	}
-
-	paymentStatusID, err := getPaymentStatusID(database.DB, pModel.AccountID)
-	if err != nil {
-		return err
-	}
-
-	if paymentStatusID != nil && *paymentStatusID == constant.Normal {
-		return fmt.Errorf("Can't create payment because payment_status_id = '%d'", constant.Normal)
 	}
 
 	paymentEntity := entity.Payment{
@@ -47,7 +37,7 @@ func InsertPayment(pModel model.Payment) error {
 }
 
 func InsertTransaction(tModel model.Transaction) error {
-	exists, err := accountIDExists(database.DB, tModel.AccountID)
+	exists, err := repository.AccountIDExists(database.DB, tModel.AccountID)
 	if err != nil {
 		return err
 	}
@@ -68,89 +58,12 @@ func InsertTransaction(tModel model.Transaction) error {
 	return nil
 }
 
-func accountIDExists(db *gorm.DB, accountID string) (bool, error) {
-	var count int64
-	if err := db.
-		Model(&entity.Account{}).
-		Where("account_id = ?", accountID).
-		Count(&count).Error; err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func getPaymentStatusID(db *gorm.DB, accountID string) (*int32, error) {
-	var payment entity.Payment
-	if err := db.
-		Model(&entity.Payment{}).
-		Where("account_id = ?", accountID).
-		Last(&payment).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	if payment.PaymentStatusID == nil || !payment.PaymentStatusID.Valid {
-		return nil, nil
-	}
-
-	return &payment.PaymentStatusID.Int32, nil
-}
-
-func getPaymentStatusIDByPaymentID(db *gorm.DB, paymentID int) (*int32, error) {
-	var payment entity.Payment
-	if err := db.
-		Model(&entity.Payment{}).
-		Where("payment_id = ?", paymentID).
-		First(&payment).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	if payment.PaymentStatusID == nil || !payment.PaymentStatusID.Valid {
-		return nil, nil
-	}
-
-	return &payment.PaymentStatusID.Int32, nil
-}
-
-func getPaymentByPaymentID(db *gorm.DB, paymentID int) (*entity.Payment, error) {
-	var payment entity.Payment
-	if err := db.
-		Model(&entity.Payment{}).
-		Where("payment_id = ?", paymentID).
-		First(&payment).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, err
-		}
-		return nil, err
-	}
-
-	return &payment, nil
-}
-
-func GetTotalPaymentByPaymentID(db *gorm.DB, paymentID int) (*entity.TotalPaymentAmount, error) {
-	var results entity.TotalPaymentAmount
-	if err := db.
-		Model(&entity.Transaction{}).
-		Where("payment_id = ?", paymentID).
-		Select("SUM(payment_amount) AS total_payment_amount").
-		Group("payment_id").
-		Scan(&results).Error; err != nil {
-		return nil, err
-	}
-	return &results, nil
-}
-
 func UpdatePaymentStatusByIDs(ids []int) error {
 	var paymentIds []int
 	var err error
 
 	if len(ids) == 0 {
-		paymentIds, err = getOverduePaymentIDs(database.DB)
+		paymentIds, err = repository.GetOverduePaymentIDs(database.DB)
 		if err != nil {
 			return fmt.Errorf("failed to get overdue payment IDs: %w", err)
 		}
@@ -166,7 +79,7 @@ func UpdatePaymentStatusByIDs(ids []int) error {
 }
 
 func UpdatePaymentStatusByID(paymentId int) error {
-	payment, err := getPaymentByPaymentID(database.DB, paymentId)
+	payment, err := repository.GetPaymentByPaymentID(database.DB, paymentId)
 	if err != nil {
 		return err
 	}
@@ -174,7 +87,7 @@ func UpdatePaymentStatusByID(paymentId int) error {
 		return fmt.Errorf("Can't update payment because payment_status_id='%d'", payment.PaymentStatusID.Int32)
 	}
 
-	totalPayment, err := GetTotalPaymentByPaymentID(database.DB, paymentId)
+	totalPayment, err := repository.GetTotalPaymentByPaymentID(database.DB, paymentId)
 	if err != nil {
 		return err
 	}
@@ -193,29 +106,4 @@ func UpdatePaymentStatusByID(paymentId int) error {
 		return fmt.Errorf("failed to update payment %d: %w", paymentId, err)
 	}
 	return nil
-}
-
-func paymentIDExists(db *gorm.DB, paymentID int) (bool, error) {
-	var count int64
-	if err := db.
-		Model(&entity.Payment{}).
-		Where("payment_id = ?", paymentID).
-		Count(&count).Error; err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func getOverduePaymentIDs(db *gorm.DB) ([]int, error) {
-	cutoff := time.Now().AddDate(0, 0, -3)
-
-	var ids []int
-	if err := db.
-		Model(&entity.Payment{}).
-		Where("due_date < ? AND payment_status_id = ?", cutoff, constant.Normal).
-		Pluck("payment_id", &ids).Error; err != nil {
-		return nil, err
-	}
-
-	return ids, nil
 }

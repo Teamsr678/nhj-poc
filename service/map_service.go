@@ -1,11 +1,11 @@
-package services
+package service
 
 import (
 	"fmt"
 	"net/url"
 	"nhj-poc/database"
 	"nhj-poc/domain/entity"
-	"nhj-poc/models"
+	"nhj-poc/domain/model"
 	"os"
 	"time"
 
@@ -72,12 +72,12 @@ func UpdateLocationOA(oaID string, latitude *float64, longitude *float64, update
 	return nil
 }
 
-func GetAllOAs() (map[string]models.LocationData, error) {
+func GetAllOAs() (map[string]model.LocationData, error) {
 	var oas []entity.OA
 	if err := database.DB.Model(&entity.OA{}).Find(&oas).Error; err != nil {
 		return nil, err
 	}
-	locations := make(map[string]models.LocationData)
+	locations := make(map[string]model.LocationData)
 	for _, oa := range oas {
 		var lat, lon float64
 		if oa.LocationLatitude != nil {
@@ -90,7 +90,7 @@ func GetAllOAs() (map[string]models.LocationData, error) {
 		if oa.LocationUpdateDateTime != nil {
 			timestamp = oa.LocationUpdateDateTime.Local()
 		}
-		locations[oa.OAId] = models.LocationData{
+		locations[oa.OAId] = model.LocationData{
 			Latitude:  lat,
 			Longitude: lon,
 			Timestamp: timestamp,

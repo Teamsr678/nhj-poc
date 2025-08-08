@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"fmt"
@@ -35,6 +35,9 @@ func InsertPayment(pModel model.Payment) error {
 		DueDate:         pModel.DueDate,
 		FullPayment:     pModel.FullPayment,
 		PaymentStatusID: util.IntToNullInt32(constant.Normal),
+		PaymentTitle:    pModel.PaymentTitle,
+		Remark:          pModel.Remark,
+		StartDate:       pModel.StartDate,
 	}
 	if err := database.DB.Create(&paymentEntity).Error; err != nil {
 		return err
@@ -44,7 +47,7 @@ func InsertPayment(pModel model.Payment) error {
 }
 
 func InsertTransaction(tModel model.Transaction) error {
-	exists, err := paymentIDExists(database.DB, tModel.PaymentID)
+	exists, err := accountIDExists(database.DB, tModel.AccountID)
 	if err != nil {
 		return err
 	}
@@ -52,23 +55,14 @@ func InsertTransaction(tModel model.Transaction) error {
 		return fmt.Errorf("payment_id not found")
 	}
 
-	paymentStatusID, err := getPaymentStatusIDByPaymentID(database.DB, tModel.PaymentID)
-	if err != nil {
-		return err
+	tEntity := entity.Transaction{
+		AccountID:       tModel.AccountID,
+		PaymentAmount:   tModel.PaymentAmount,
+		TransactionDate: time.Now(),
 	}
 
-	if paymentStatusID != nil && *paymentStatusID == constant.Normal {
-		tEntity := entity.Transaction{
-			PaymentID:       tModel.PaymentID,
-			PaymentAmount:   tModel.PaymentAmount,
-			TransactionDate: time.Now(),
-		}
-
-		if err := database.DB.Create(&tEntity).Error; err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Can't create transaction because payment_status_id='%d'", *paymentStatusID)
+	if err := database.DB.Create(&tEntity).Error; err != nil {
+		return err
 	}
 
 	return nil

@@ -3,7 +3,7 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"nhj-poc/services"
+	"nhj-poc/service"
 	"strconv"
 	"time"
 
@@ -32,12 +32,12 @@ func GetMapsLinkHandler(c *gin.Context) {
 		return
 	}
 
-	mapsLink := services.GenerateMapsLink(latitude, longitude)
+	mapsLink := service.GenerateMapsLink(latitude, longitude)
 	c.JSON(http.StatusOK, gin.H{"maps_link": mapsLink})
 }
 
 func GetLocationsHandler(c *gin.Context) {
-	locations, err := services.GetAllOAs()
+	locations, err := service.GetAllOAs()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -62,7 +62,7 @@ func UpdateLocationHandler(c *gin.Context) {
 	}
 
 	var now = time.Now()
-	err := services.UpdateLocationOA(oaID, &latitude, &longitude, &now)
+	err := service.UpdateLocationOA(oaID, &latitude, &longitude, &now)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -92,7 +92,7 @@ func GetRouteHandler(c *gin.Context) {
 		c.Data(http.StatusBadRequest, contentType, []byte("<h1>Error: Invalid destination latitude or longitude</h1>"))
 		return
 	}
-	htmlContent, err := services.GenerateMapHTML(employeeID, destLat, destLon)
+	htmlContent, err := service.GenerateMapHTML(employeeID, destLat, destLon)
 	if err != nil {
 		c.Data(http.StatusInternalServerError, contentType, []byte("<h1>Error: GenerateMap fail</h1>"))
 	}

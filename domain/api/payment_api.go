@@ -3,14 +3,17 @@ package api
 import "time"
 
 type Payment struct {
-	AccountID   string    `json:"account_id"`
-	DueDate     time.Time `json:"due_date"`
-	FullPayment int       `json:"full_payment"`
+	AccountID    string    `json:"account_id"`
+	DueDate      time.Time `json:"due_date"`
+	FullPayment  int       `json:"full_payment"`
+	PaymentTitle string    `json:"payment_title"`
+	Remark       *string   `json:"remark"`
+	StartDate    time.Time `json:"start_date"`
 }
 
 type Transaction struct {
-	PaymentID     int `json:"payment_id"`
-	PaymentAmount int `json:"payment_amount"`
+	AccountID     string `json:"account_id"`
+	PaymentAmount int    `json:"payment_amount"`
 }
 
 type UpdatePaymentStatus struct {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"nhj-poc/domain/api"
 	"nhj-poc/domain/model"
-	"nhj-poc/services"
+	"nhj-poc/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
@@ -24,7 +24,7 @@ func InsertPayment(c *gin.Context) {
 		return
 	}
 
-	if err := services.InsertPayment(pModel); err != nil {
+	if err := service.InsertPayment(pModel); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -46,7 +46,7 @@ func InsertTransaction(c *gin.Context) {
 		return
 	}
 
-	err := services.InsertTransaction(tModel)
+	err := service.InsertTransaction(tModel)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -64,7 +64,7 @@ func UpdatePaymentStatus(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdatePaymentStatusByID(updatePaymentStatusAPI.PaymentID); err != nil {
+	if err := service.UpdatePaymentStatusByID(updatePaymentStatusAPI.PaymentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

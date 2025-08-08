@@ -83,11 +83,8 @@ func UpdatePaymentStatusByID(paymentId int) error {
 	if err != nil {
 		return err
 	}
-	if payment != nil && payment.PaymentStatusID.Int32 != constant.Normal {
-		return fmt.Errorf("Can't update payment because payment_status_id='%d'", payment.PaymentStatusID.Int32)
-	}
 
-	totalPayment, err := repository.GetTotalPaymentByPaymentID(database.DB, paymentId)
+	totalPayment, err := repository.GetTotalPayment(database.DB, payment.AccountID, payment.StartDate, payment.DueDate)
 	if err != nil {
 		return err
 	}

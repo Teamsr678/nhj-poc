@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"nhj-poc/constant"
 	"nhj-poc/domain/entity"
 	"time"
 
@@ -25,7 +24,7 @@ func GetOverduePaymentIDs(db *gorm.DB) ([]int, error) {
 	var ids []int
 	if err := db.
 		Model(&entity.Payment{}).
-		Where("due_date < ? AND payment_status_id = ?", cutoff, constant.Normal).
+		Where("due_date < ?", cutoff).
 		Pluck("payment_id", &ids).Error; err != nil {
 		return nil, err
 	}
@@ -67,13 +66,13 @@ func GetPaymentByPaymentID(db *gorm.DB, paymentID int) (*entity.Payment, error) 
 	return &payment, nil
 }
 
-func GetTotalPaymentByPaymentID(db *gorm.DB, paymentID int) (*entity.TotalPaymentAmount, error) {
+func GetTotalPayment(db *gorm.DB, accountID string, startDate, dueDate time.Time) (*entity.TotalPaymentAmount, error) {
 	var results entity.TotalPaymentAmount
 	if err := db.
 		Model(&entity.Transaction{}).
-		Where("payment_id = ?", paymentID).
+		Where("account_id = ? AND (transaction_date BETWEEN ? AND ?)", accountID, startDate, dueDate).
 		Select("SUM(payment_amount) AS total_payment_amount").
-		Group("payment_id").
+		Group("account_id").
 		Scan(&results).Error; err != nil {
 		return nil, err
 	}

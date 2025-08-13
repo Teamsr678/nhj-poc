@@ -32,6 +32,8 @@ func main() {
 	r.GET("/get-locations", controller.GetLocationsHandler)
 	r.GET("/get-route", controller.GetRouteHandler)
 
+	r.PUT("/update-assignments-by-product-type", controller.UpdateAssignmentsByProductType)
+
 	r.Run(":8080")
 }
 

@@ -8,10 +8,10 @@ import (
 type OA struct {
 	OAId                   string           `gorm:"column:oa_id" json:"oa_id"`
 	OAName                 *sql.NullString  `gorm:"column:oa_name" json:"oa_name"`
-	Capacity               *sql.NullString  `gorm:"column:capacity" json:"capacity"`
-	Ranking                *sql.NullString  `gorm:"column:ranking" json:"ranking"`
-	C2CPercentage          *sql.NullString  `gorm:"column:c2c_percentage" json:"c2c_percentage"`
-	CRCPercentage          *sql.NullString  `gorm:"column:crc_percentage" json:"crc_percentage"`
+	Capacity               *sql.NullInt16   `gorm:"column:capacity" json:"capacity"`
+	Ranking                *sql.NullInt16   `gorm:"column:ranking" json:"ranking"`
+	C2CPercentage          *sql.NullFloat64 `gorm:"column:c2c_percentage" json:"c2c_percentage"`
+	CRLPercentage          *sql.NullFloat64 `gorm:"column:crl_percentage" json:"crl_percentage"`
 	PostalList             *sql.NullString  `gorm:"column:postal_list" json:"postal_list"`
 	LocationLatitude       *sql.NullFloat64 `gorm:"column:location_latitude" json:"location_latitude"`
 	LocationLongitude      *sql.NullFloat64 `gorm:"column:location_longitude" json:"location_longitude"`
